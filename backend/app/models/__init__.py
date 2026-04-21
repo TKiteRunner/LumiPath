@@ -12,7 +12,7 @@ from app.models.agent import AgentSession, AgentMessage
 from app.models.memory import (
     MemoryLongTerm, MemoryLongTermHistory,
     MemorySummary, MemoryEpisode, MemoryProcedure,
-    ToolsRegistry,
+    SkillsRegistry,
 )
 from app.models.event import Event, TaskIdempotency, AccountDeletionLog
 
@@ -34,7 +34,7 @@ __all__ = [
     "AgentSession", "AgentMessage",
     # memory
     "MemoryLongTerm", "MemoryLongTermHistory",
-    "MemorySummary", "MemoryEpisode", "MemoryProcedure", "ToolsRegistry",
+    "MemorySummary", "MemoryEpisode", "MemoryProcedure", "SkillsRegistry",
     # events
     "Event", "TaskIdempotency", "AccountDeletionLog",
 ]

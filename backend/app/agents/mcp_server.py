@@ -1,6 +1,6 @@
 """
 MCP Server 配置（基于 mcp Python SDK）。
-暴露 Skills 给 Obsidian / Claude Desktop。
+暴露 Tools 给 Obsidian / Claude Desktop。
 """
 # import mcp.server.stdio
 # from mcp.server import Server
@@ -10,12 +10,12 @@ MCP Server 配置（基于 mcp Python SDK）。
 
 # @server.list_tools()
 # async def list_tools() -> list[Tool]:
-#     # TODO: list skills from SKILL_REGISTRY
+#     # TODO: list tools from TOOL_REGISTRY
 #     return []
 
 # @server.call_tool()
 # async def call_tool(name: str, arguments: dict) -> list[TextContent]:
-#     # TODO: dispatch to SKILL_REGISTRY
+#     # TODO: dispatch to TOOL_REGISTRY
 #     return [TextContent(type="text", text="mcp server stub")]
 
 # async def main():

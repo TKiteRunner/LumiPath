@@ -8,5 +8,7 @@ from app.agents.state import AgentState
 
 
 def okr_agent(state: AgentState) -> Command[str]:
-    state["messages"].append(SystemMessage(content="OKR Agent 已经处理完毕。"))
-    return Command(goto="supervisor", update={"current_agent": None})
+    return Command(
+        goto="supervisor",
+        update={"messages": [SystemMessage(content="OKR Agent 已经处理完毕。")], "current_agent": None},
+    )

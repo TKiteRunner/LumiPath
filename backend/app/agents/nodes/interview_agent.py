@@ -14,8 +14,7 @@ def interview_agent(state: AgentState) -> Command[str]:
     面试复盘专家 Agent。
     """
     # ...TODO: retriever -> planner -> executor -> reflector -> memory_writer
-    
-    state["messages"].append(SystemMessage(content="Interview Agent 已经处理完毕。"))
-    
-    # 处理完后，交回 supervisor 处理（可以 resume 并等待用户下一句话，或者直接结束）
-    return Command(goto="supervisor", update={"current_agent": None})
+    return Command(
+        goto="supervisor",
+        update={"messages": [SystemMessage(content="Interview Agent 已经处理完毕。")], "current_agent": None},
+    )
