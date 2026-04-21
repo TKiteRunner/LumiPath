@@ -30,8 +30,9 @@ def supervisor_agent(state: AgentState) -> Command[str]:
         target = "memory_agent"
     
     if target == "END":
-        # 如果不分发，就在 supervisor 给出一条默认的回答即可
-        state["messages"].append(SystemMessage(content="Supervisor 无法识别特定意图，直接响应。"))
-        return Command(goto="__end__", update=state)
+        return Command(
+            goto="__end__",
+            update={"messages": [SystemMessage(content="Supervisor 无法识别特定意图，直接响应。")]},
+        )
     else:
         return Command(goto=target, update={"next_agent": target, "current_agent": target})

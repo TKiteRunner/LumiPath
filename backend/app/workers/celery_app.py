@@ -1,17 +1,15 @@
 """
 Celery 配置及实例化，4个并发队列。
 """
-import os
 from celery import Celery
 from kombu import Queue, Exchange
 
-broker_url = os.environ.get("CELERY_BROKER_URL", "amqp://guest:guest@localhost:5672//")
-result_backend = os.environ.get("CELERY_RESULT_BACKEND", "redis://localhost:6379/1")
+from app.config import settings
 
 celery_app = Celery(
     "lumipath",
-    broker=broker_url,
-    backend=result_backend,
+    broker=settings.celery_broker_url,
+    backend=settings.celery_result_backend,
     include=["app.workers.embedding_worker", "app.workers.vault_watcher"]
 )
 

@@ -22,7 +22,7 @@ backend/
 │       ├── 004_companies_interviews.py
 │       ├── 005_okr.py
 │       ├── 006_notes_vault.py       ← vault_configs / notes / tags / links / embeddings
-│       ├── 007_agent_memory.py      ← sessions / messages / memory_* / skills_registry
+│       ├── 007_agent_memory.py      ← sessions / messages / memory_* / tools_registry
 │       ├── 008_events_idempotency.py
 │       └── 009_seed.py              ← 初始 roles / permissions
 └── app/
@@ -42,7 +42,7 @@ backend/
     │   ├── note.py                  ← Note / NoteTag / NoteLink / NoteEmbedding
     │   ├── vault.py                 ← VaultConfig / Conflict
     │   ├── agent.py                 ← AgentSession / AgentMessage
-    │   ├── memory.py                ← MemoryLongTerm / MemorySummary / MemoryEpisode / MemoryProcedure / SkillsRegistry
+    │   ├── memory.py                ← MemoryLongTerm / MemorySummary / MemoryEpisode / MemoryProcedure / ToolsRegistry
     │   └── event.py                 ← Event / TaskIdempotency / AccountDeletionLog
     ├── schemas/                     ← Pydantic v2 DTO
     │   ├── __init__.py
@@ -86,9 +86,9 @@ backend/
     │   │   ├── okr_agent.py
     │   │   ├── notes_agent.py
     │   │   └── memory_agent.py
-    │   ├── skills/
+    │   ├── tools/
     │   │   ├── __init__.py
-    │   │   ├── base.py              ← BaseSkill ABC + @register_skill + SKILL_REGISTRY
+    │   │   ├── base.py              ← BaseTool ABC + @register_tool + TOOL_REGISTRY
     │   │   ├── search_questions.py
     │   │   ├── generate_review.py
     │   │   ├── analyze_status.py
@@ -109,7 +109,7 @@ backend/
     │   │   ├── semantic.py          ← SemanticMemory — Neo4j Cypher stub
     │   │   ├── procedural.py        ← ProceduralMemory — PG stub
     │   │   └── manager.py           ← MemoryManager + RRF 融合（接口完整，IO stub）
-    │   └── mcp_server.py            ← MCP stdio/SSE 骨架
+    │   └── mcp_server.py            ← MCP stdio/SSE 骨架（暴露 TOOL_REGISTRY 中的 Tools）
     └── workers/
         ├── __init__.py
         ├── celery_app.py            ← Celery 4队列（agent_long/embedding/notify/vault_sync）
@@ -128,7 +128,7 @@ backend/
 | 2 · 安全 | security / deps / exceptions / rbac | 4 |
 | 3 · API 路由 | 6 路由 + router + main.py | 8 |
 | 4 · Services | auth / interview / okr / notes / vault_sync | 5 |
-| 5 · Agent & Memory | state / graph / 5节点 / 9 Skills / 7层Memory+Manager | 28 |
+| 5 · Agent & Memory | state / graph / 5节点 / 9 Tools / 7层Memory+Manager | 28 |
 | 6 · Workers 骨架 | celery_app / embedding / vault_watcher | 4 |
 
 ---
@@ -174,15 +174,15 @@ supervisor → [interview_agent | okr_agent | notes_agent | memory_agent | END]
 - 使用 `Command(goto="interview", update={...})` 路由
 - subgraph 结束后通过 `Command(goto="supervisor", resume=True)` 回归
 
-### `@register_skill` 装饰器
+### `@register_tool` 装饰器
 ```python
-SKILL_REGISTRY: dict[str, type[BaseSkill]] = {}
+TOOL_REGISTRY: dict[str, type[BaseTool]] = {}
 
-def register_skill(name: str, version: str = "1.0.0"):
-    def decorator(cls: type[BaseSkill]) -> type[BaseSkill]:
-        SKILL_REGISTRY[name] = cls
-        cls.skill_name = name
-        cls.skill_version = version
+def register_tool(name: str, version: str = "1.0.0"):
+    def decorator(cls: type[BaseTool]) -> type[BaseTool]:
+        TOOL_REGISTRY[name] = cls
+        cls.tool_name = name
+        cls.tool_version = version
         return cls
     return decorator
 ```
@@ -232,8 +232,8 @@ curl http://localhost:8000/health
 # 6. 验证 LangGraph 图可编译
 python -c "from app.agents.graph import compiled_graph; print('OK', compiled_graph.get_graph())"
 
-# 7. 验证 SkillRegistry 自动发现
-python -c "from app.agents.skills import SKILL_REGISTRY; print(list(SKILL_REGISTRY.keys()))"
+# 7. 验证 ToolRegistry 自动发现
+python -c "from app.agents.tools import TOOL_REGISTRY; print(list(TOOL_REGISTRY.keys()))"
 
 # 8. 单元测试
 pytest backend/tests/ -v
