@@ -53,7 +53,7 @@ def upgrade() -> None:
             perm_id = conn.execute(
                 sa.text("SELECT id FROM permissions WHERE code = :code"), {"code": code}
             ).scalar()
-            op.execute(
+            conn.execute(
                 sa.text("INSERT INTO role_permissions (role_id, permission_id) VALUES (:role_id, :perm_id)"),
                 {"role_id": str(role_id), "perm_id": str(perm_id)},
             )

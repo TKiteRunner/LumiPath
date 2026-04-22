@@ -3,6 +3,17 @@
 > AI 驱动的面试追踪 + OKR 个人规划 + **每日学习笔记（Obsidian 兼容 + Git 版本化）** 系统
 > 本文档为 **Step 1–4 统一开发蓝图**。v3 为决策锁定版。
 
+## 📊 总体进度（2026-04-21）
+
+| 阶段 | 状态 | 说明 |
+|------|------|------|
+| **Step 1** — 文档设计 | ✅ 已完成 | architecture / memory-system / notes-vault-spec / database-schema |
+| **Step 2** — 后端骨架 | ✅ 已完成 | 78 文件全部就位；核心逻辑已补全（见第 8 节详细对照表） |
+| **Step 3** — 异步 & 中间件 | ✅ 已完成 | Redis/PG/Neo4j 真实 IO；9个Tool；WebSocket；Google OAuth；MCP Server |
+| **Step 4** — 前端 + MCP | 🔜 待排期 | Next.js 页面；Milkdown 编辑器；MCP 工具暴露 |
+
+---
+
 ---
 
 ## ✅ 决策锁定（2026-04-21）
@@ -72,7 +83,7 @@
 
 **拓扑**：1 个 Supervisor + 4 个 Specialized Agent（各为独立 subgraph）
 
-| Agent | 职责 | 主要 Skills |
+| Agent | 职责 | 主要 Tools |
 |-------|------|-----------|
 | Supervisor | 意图识别、路由、汇总 | — |
 | Interview Agent | 面试复盘、题目搜索、状态分析 | `search_questions`, `generate_review`, `analyze_status` |
@@ -86,8 +97,8 @@
 
 **每个 Specialized Agent 内部节点**：`retriever → planner → executor → reflector → memory_writer`
 
-- Skills 可插拔（`@register_skill` 装饰器）
-- MCP 暴露每个 Skill 给外部（Claude Desktop / Cursor / Obsidian 插件）
+- Tools 可插拔（`@register_tool` 装饰器）
+- MCP 暴露每个 Tool 给外部（Claude Desktop / Cursor / Obsidian 插件）
 
 ### 3.4 异步架构：**RabbitMQ + Celery**（锁定）
 - **RabbitMQ**：Celery 的 broker，承载所有异步任务（Agent 长链路、笔记向量化、邮件、Git 提交等）。
@@ -109,7 +120,7 @@
 | 源存储 | 每个用户一个 `vault/` 目录，按 `daily/YYYY-MM-DD.md` 组织 |
 | 文件系统 | 本地开发：宿主机挂载；生产：S3 兼容对象存储（MinIO / AWS S3 / 阿里 OSS）|
 | 元数据 | PostgreSQL `notes` 表：路径、标题、frontmatter、标签、关联 Interview/OKR、embedding 引用 |
-| 向量化 | 笔记保存后 → Kafka → 异步 embedding → 存 pgvector |
+| 向量化 | 笔记保存后 → RabbitMQ → 异步 embedding → 存 pgvector |
 | Obsidian 兼容 | ① YAML Frontmatter<br>② `[[wiki-link]]` 内链解析<br>③ `#tag` 标签同步<br>④ 用户可直接把 vault 目录用 Obsidian 打开 |
 | 同步方向 | **双向**：Web 端编辑 → 写文件 + 更新 DB；外部改文件 → inotify/polling → 回流 DB |
 | 冲突处理 | 以文件 `mtime` + DB `version` 为准，冲突时保留 `.conflict-{ts}.md` 副本 |
@@ -131,7 +142,7 @@
 | 关系库 | PostgreSQL + pgvector | 16 |
 | 图库 | Neo4j | 5 Community |
 | 缓存 | Redis | 7 |
-| 队列 | Kafka (KRaft) + Celery | 3.7 / 5.3 |
+| 队列 | RabbitMQ + Celery | latest / 5.3 |
 | 部署 | Docker Compose + Nginx | latest |
 
 ---
@@ -170,14 +181,14 @@ LumiPath/
 │   │   │   └── vault_sync.py       ← 🆕 文件 ↔ DB 双向同步
 │   │   ├── agents/
 │   │   │   ├── graph.py            ← LangGraph 主图
-│   │   │   ├── skills/             ← 可插拔 Skill
+│   │   │   ├── tools/              ← 可插拔 Tool
 │   │   │   │   ├── search_questions.py
 │   │   │   │   ├── analyze_okr.py
 │   │   │   │   ├── generate_review.py
-│   │   │   │   └── daily_note_assistant.py  ← 🆕 笔记助手 Skill
+│   │   │   │   └── daily_note_assistant.py  ← 🆕 笔记助手 Tool
 │   │   │   ├── memory/             ← 7 层记忆实现
 │   │   │   └── mcp_server.py       ← MCP 暴露
-│   │   ├── workers/                ← Celery + Kafka consumer
+│   │   ├── workers/                ← Celery worker (RabbitMQ broker)
 │   │   │   ├── embedding_worker.py ← 🆕 笔记 embedding 异步化
 │   │   │   └── vault_watcher.py    ← 🆕 监听 vault 文件变更
 │   │   └── websocket/
@@ -281,7 +292,7 @@ linked_questions: [uuid-q-101, uuid-q-102]
 |------|------|
 | 用户已有 Obsidian Vault | 指定本地路径挂载为 `vault/{user_id}/`，LumiPath 直接读写 |
 | 用户在 LumiPath Web 编辑 | 保存即写文件 → Obsidian 端自动刷新 |
-| 用户在 Obsidian 编辑 | `watchfiles` 监听 → 触发 Kafka 事件 → 更新 DB 索引 + 重新 embedding |
+| 用户在 Obsidian 编辑 | `watchfiles` 监听 → 触发 RabbitMQ 消息 → 更新 DB 索引 + 重新 embedding |
 | 内链 `[[xxx]]` | 后端解析后建立 `note_links` 表双向链接，前端渲染为可点击跳转 |
 | `#tag` | 写入 `note_tags`，驱动侧边栏过滤 |
 
@@ -326,8 +337,8 @@ linked_questions: [uuid-q-101, uuid-q-102]
 | `memory_long_term` | 职业画像/能力模型 |
 | `memory_summaries` | 摘要 + embedding |
 | `memory_episodes` | 情景记忆 + embedding |
-| `memory_procedures` | Skill 执行日志 |
-| `skills_registry` | Skill 元数据 |
+| `memory_procedures` | Tool 执行日志 |
+| `tools_registry` | Tool 元数据 |
 
 ### 7.5 7 层记忆矩阵（更新后）
 
@@ -339,34 +350,73 @@ linked_questions: [uuid-q-101, uuid-q-102]
 | Summary | PG + pgvector | **周/月笔记总结自动生成** |
 | Episodic | PG + pgvector | 某场面试的完整笔记+对话 |
 | Semantic | Neo4j | **笔记 #tag → Concept 节点** |
-| Procedural | PG `memory_procedures` | Skill 执行日志 |
+| Procedural | PG `memory_procedures` | Tool 执行日志 |
 
 ---
 
 ## 8. Step 2–4 交付速览
 
-### Step 2：Backend & Agent 骨架
-- `main.py` + 配置 + 异常
-- `core/security.py`（JWT + RBAC Dependency）
-- `agents/memory/base.py`（`BaseMemory` + 7 子类骨架）
-- `agents/graph.py`（LangGraph StateGraph 最小可运行）
-- `agents/skills/base.py`（`@register_skill`）
-- 🆕 `services/notes_service.py`（Markdown 读写 + frontmatter）
+### Step 2：Backend & Agent 骨架 ✅ 已完成（2026-04-21）
 
-### Step 3：异步 & 中间件
-- Kafka producer/consumer
-- Celery + Redis broker
-- Redis 防击穿/穿透/雪崩三件套
-- WebSocket Manager
-- 🆕 `workers/vault_watcher.py`（watchfiles + 事件发送）
-- 🆕 `workers/embedding_worker.py`（笔记向量化）
+> 78 个后端文件全部就位，详见 [docs/step2-implementation-plan.md](docs/step2-implementation-plan.md)
 
-### Step 4：前端 + MCP
-- 马卡龙主题 CSS 变量 + 组件库
-- 面试看板 / OKR 树 / Agent 对话
-- 🆕 笔记日历页（月视图）+ Milkdown/TipTap 编辑器 + 反向链接面板
+| 类别 | 文件 | 状态 |
+|------|------|------|
+| 脚手架 | `pyproject.toml` / `.env.example` / `alembic.ini` | ✅ 完整 |
+| DB 层 | `models/` (11 个) + `migrations/` (9 个) | ✅ 完整 |
+| 安全层 | `core/security.py` / `core/deps.py` / `core/rbac.py` | ✅ 完整 |
+| API 路由 | `api/v1/` (7 个路由) + `main.py` | ✅ 完整 |
+| 服务层 | `auth_service.py` / `interview_service.py` / `okr_service.py` | ✅ 完整 |
+| 笔记服务 | `notes_service.py`（文件 IO + frontmatter + **DB upsert/list/get/delete**） | ✅ 已补全 |
+| Agent 图 | `agents/graph.py`（LangGraph StateGraph） | ✅ 完整 |
+| Supervisor | `agents/nodes/supervisor.py`（**LiteLLM 意图分类 + 关键词降级**） | ✅ 已补全 |
+| Agent 节点 | `interview_agent` / `notes_agent` / `okr_agent` / `memory_agent` | ✅ 已补全 |
+| 记忆管理 | `agents/memory/manager.py`（**RRF 融合 + 并行召回**） | ✅ 已补全 |
+| 记忆子类 | 7 层 `BaseMemory` 子类（Redis/PG/Neo4j IO 为 stub） | ✅ 骨架完整 |
+| Tool 注册 | `@register_tool` + 9 个 Tool 类（业务逻辑为 stub） | ✅ 骨架完整 |
+| Workers | `celery_app.py` / **`embedding_worker.py`**（切块算法）/ **`vault_watcher.py`**（Git + watchfiles） | ✅ 已补全 |
+
+#### Step 2 待 Step 3 完成的 TODO 项
+
+| 文件 | 待实现 |
+|------|--------|
+| `core/security.py` | Refresh token Redis 黑名单 |
+| `auth_service.py` | Google OAuth code exchange + Redis TTL |
+| `agents/memory/short_term.py` | Redis GET/HSET 真实 IO |
+| `agents/memory/long_term.py` | PG JSONB merge 真实 IO |
+| `agents/memory/summary.py` | pgvector ANN 搜索 |
+| `agents/memory/episodic.py` | pgvector ANN 搜索 |
+| `agents/memory/semantic.py` | Neo4j Cypher 查询 |
+| `agents/tools/*.py` | 9 个 Tool 的真实业务逻辑 |
+| `workers/embedding_worker.py` | LiteLLM embedding + pgvector 写入 |
+| `agents/mcp_server.py` | MCP stdio/SSE 完整实现 |
+
+---
+
+### Step 3：异步 & 中间件 ✅ 已完成（2026-04-21）
+
+> 32 个文件（7 新建 + 25 修改），详见 [docs/step3-implementation-plan.md](docs/step3-implementation-plan.md)
+
+| 类别 | 文件 / 内容 | 状态 |
+|------|------------|------|
+| 基础设施 | `db/redis.py`（连接池 + Bloom Filter + TTL 抖动）/ `db/neo4j.py`（async driver）/ `websocket/manager.py`（Pub/Sub 转发） | ✅ |
+| Auth & Security | `core/security.py` Refresh token 黑名单 / `auth_service.py` Google OAuth httpx exchange + Redis TTL | ✅ |
+| Memory 层 | `short_term.py` Redis HSET/GET / `long_term.py` PG JSONB merge / `summary.py` + `episodic.py` pgvector ANN / `semantic.py` Neo4j Cypher | ✅ |
+| 共用 LLM 工具 | `agents/llm.py` LiteLLM embedding + chat completion 统一封装 | ✅ |
+| 9 个 Tool | `search_questions`（PG 全文 + pgvector）/ `generate_review`（LiteLLM）/ `analyze_status` / `analyze_okr` / `suggest_tasks` / `generate_report` / `daily_note_assistant` / `search_notes` / `create_summary` | ✅ |
+| Workers | `embedding_worker.py` LiteLLM + pgvector bulk upsert / `vault_watcher.py` 文件→DB 完整回流 / `agent_worker.py` LangGraph 驱动 + Pub/Sub 推送 | ✅ |
+| WebSocket + Chat | `api/v1/agent.py` `/agent/chat`（Celery 投递）+ `/ws/tasks/{id}`（Redis Pub/Sub）| ✅ |
+| MCP Server | `agents/mcp_server.py` stdio + SSE 双模式，暴露全部 TOOL_REGISTRY | ✅ |
+| 运维 | `infra/supervisord.conf` + `vault_watcher_main.py` 管理 FastAPI / Celery / vault_watcher 三进程 | ✅ |
+
+### Step 4：前端 + MCP（待开发）
+
+- 马卡龙主题 CSS 变量 + shadcn/ui 组件库
+- 面试看板 / OKR 树 / Agent 对话界面
+- 🆕 笔记日历页（月视图）+ Milkdown 编辑器 + 反向链接面板
 - 🆕 MCP 工具：`list_notes`、`search_notes_semantic`、`create_daily_note`、`get_note_by_date`
 - MCP 工具：`list_interviews` / `analyze_okr` / `generate_review`
+- i18n（zh-CN / en-US）切换
 
 ---
 
@@ -378,11 +428,11 @@ linked_questions: [uuid-q-101, uuid-q-102]
 | Redis 击穿 | 分布式锁 + 逻辑过期 |
 | Redis 穿透 | 布隆过滤器 + 空值短 TTL |
 | Redis 雪崩 | TTL 随机抖动 + 多级缓存 |
-| LLM 调用削峰 | Kafka 主题 + 消费者限流 |
+| LLM 调用削峰 | RabbitMQ 队列 + 消费者限流 |
 | 前端不阻塞 | 立即返回 `task_id` + WebSocket 推进度 |
-| Skill 可插拔 | `@register_skill` + 自动发现 |
+| Tool 可插拔 | `@register_tool` + 自动发现 |
 | 🆕 笔记同步一致性 | 文件 mtime + DB version；冲突保留 `.conflict-{ts}.md` |
-| 🆕 笔记批量 embedding | Kafka 分区 + rate limit（避免 LLM API 超限） |
+| 🆕 笔记批量 embedding | RabbitMQ 队列 + rate limit（避免 LLM API 超限） |
 
 ---
 
@@ -392,7 +442,7 @@ linked_questions: [uuid-q-101, uuid-q-102]
 |---|------|------|
 | Q1 | PG vs MySQL？ | **默认 PG**（建议）/ MySQL |
 | Q2 | Neo4j 是否必须？ | **保留** / 砍掉只用 pgvector |
-| Q3 | 队列方案？ | **Kafka + Celery**（推荐）/ 只 Kafka / 只 Celery |
+| Q3 | 队列方案？ | **RabbitMQ + Celery**（已锁定，见决策 Q3） |
 | Q4 | LLM 供应商？ | **LiteLLM 统一抽象**（推荐）/ 单一 Claude / OpenAI / Qwen / DeepSeek |
 | Q5 | MCP 客户端接入 | Claude Desktop / Cursor / **Obsidian 插件**（契合新模块） |
 | Q6 | MVP 登录方式？ | **邮箱 + 密码**（省事）/ 完整手机验证码 |

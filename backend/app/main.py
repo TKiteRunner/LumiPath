@@ -10,17 +10,31 @@ from app.api.v1.router import api_router
 from app.config import settings
 from app.core.exceptions import register_exception_handlers
 from app.db.engine import engine
+from app.db.redis import init_redis_pool, close_redis_pool, get_redis, bloom_init
+from app.db.neo4j import init_neo4j, close_neo4j
 
 logger = structlog.get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期：启动时连接检查，关闭时清理。"""
+    """应用生命周期：启动时初始化所有外部连接，关闭时清理。"""
     logger.info("LumiPath backend starting", env=settings.app_env)
-    # TODO Step 3: 初始化 Redis 连接池 / Neo4j 驱动 / RabbitMQ 连接
+
+    # Redis
+    await init_redis_pool()
+    redis = get_redis()
+    await bloom_init(redis)
+    logger.info("Redis pool initialized")
+
+    # Neo4j
+    await init_neo4j()
+
     yield
+
     # 关闭
+    await close_redis_pool()
+    await close_neo4j()
     await engine.dispose()
     logger.info("LumiPath backend shutdown complete")
 

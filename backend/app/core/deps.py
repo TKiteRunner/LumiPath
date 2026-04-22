@@ -8,7 +8,7 @@ from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decode_token
+from app.core.security import decode_token, is_token_blacklisted
 from app.db.session import get_async_session
 from app.models.user import Permission, Role, RolePermission, User, UserRole
 
@@ -19,6 +19,7 @@ async def get_current_user(
 ) -> User:
     """
     从 Authorization: Bearer <token> 中提取并验证用户。
+    同时检查 jti 是否在 Redis 黑名单中（logout 立即失效）。
     """
     credentials_exc = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -34,7 +35,12 @@ async def get_current_user(
         if payload.get("type") != "access":
             raise credentials_exc
         user_id: str = payload["sub"]
+        jti: str | None = payload.get("jti")
     except (JWTError, KeyError):
+        raise credentials_exc
+
+    # Redis 黑名单检查（access token 也可能因强制 logout 而失效）
+    if jti and await is_token_blacklisted(jti):
         raise credentials_exc
 
     result = await db.execute(select(User).where(User.id == user_id, User.deleted_at.is_(None)))

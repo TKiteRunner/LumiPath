@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker info *)",
+      "Bash(curl -v --proxy http://127.0.0.1:7890 https://registry-1.docker.io/v2/)"
+    ]
+  }
+}

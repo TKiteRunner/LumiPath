@@ -19,8 +19,8 @@ class ChatResponse(BaseModel):
 
 
 class TaskStatus(BaseModel):
-    task_id: uuid.UUID
-    status: str    # queued / running / done / failed
+    task_id: str
+    status: str    # queued / running / done / failed / not_found
     stage: str | None = None
     result: dict | None = None
-    created_at: datetime
+    created_at: datetime | None = None

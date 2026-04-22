@@ -1,20 +1,140 @@
 """
-Interview Agent 节点流水线。
-内部应包含：retriever -> planner -> executor -> reflector -> memory_writer
-这里使用简化的单节点作为封装，最终发 Command 回到 supervisor。
+Interview Agent — retriever → planner → executor → reflector → memory_writer
 """
+from __future__ import annotations
+
+import json
+import re
+import structlog
+from langchain_core.messages import AIMessage
 from langgraph.types import Command
-from langchain_core.messages import SystemMessage
 
 from app.agents.state import AgentState
+from app.agents.memory.manager import MemoryManager
+from app.agents.tools.search_questions import SearchQuestionsTool
+from app.agents.tools.generate_review import GenerateReviewTool
+from app.agents.tools.analyze_status import AnalyzeStatusTool
+
+logger = structlog.get_logger(__name__)
+
+_SYSTEM_PROMPT = "你是专业的面试教练（Interview Coach），帮助用户进行面试复盘、题目搜索与状态分析。请用中文回复。"
+
+_PLANNER_PROMPT = """\
+你是面试教练，需要决定调用哪个工具来回答用户问题。
+
+可用工具：
+- search_questions : 按关键词或语义搜索面试题目（需要参数 query: str, top_k?: int）
+- generate_review  : 生成面试复盘报告（需要参数 interview_id?: str）
+- analyze_status   : 分析用户整体面试进度与状态（无必填参数）
+- none             : 直接回复，不调用工具
+
+用户问题：{query}
+已召回上下文（摘要）：{context}
+
+请以 JSON 格式回复，仅包含 JSON，不要有其他文字：
+{{"tool": "<tool_name>", "params": {{...}}, "reason": "<一句话说明>"}}
+如果选择 none：{{"tool": "none", "response": "<直接回复内容>"}}"""
 
 
-def interview_agent(state: AgentState) -> Command[str]:
-    """
-    面试复盘专家 Agent。
-    """
-    # ...TODO: retriever -> planner -> executor -> reflector -> memory_writer
+async def _retriever(state: AgentState) -> tuple[str, dict]:
+    query = state["messages"][-1].content if state["messages"] else ""
+    mgr = MemoryManager(state["user_id"])
+    retrieved = await mgr.retrieve_context(query)
+    return query, retrieved
+
+
+async def _planner(query: str, retrieved: dict) -> dict:
+    from app.config import settings
+    api_key = settings.fallback_anthropic_api_key or settings.fallback_openai_api_key
+    if not api_key:
+        return {"tool": "none", "response": "（请先在设置页配置 LLM API Key 以启用 AI 功能）"}
+    try:
+        import litellm
+        model = (
+            "anthropic/claude-haiku-4-5-20251001"
+            if settings.fallback_anthropic_api_key
+            else "openai/gpt-4o-mini"
+        )
+        context_str = str(retrieved.get("fused_context", {}))[:800]
+        resp = await litellm.acompletion(
+            model=model,
+            messages=[{"role": "user", "content": _PLANNER_PROMPT.format(query=query, context=context_str)}],
+            max_tokens=300,
+            temperature=0.1,
+        )
+        raw = resp.choices[0].message.content.strip()
+        m = re.search(r"\{.*\}", raw, re.DOTALL)
+        if m:
+            return json.loads(m.group())
+    except Exception as exc:
+        logger.warning("interview planner failed", error=str(exc))
+    return {"tool": "none", "response": ""}
+
+
+async def _executor(plan: dict, user_id: str) -> dict:
+    tool_map = {
+        "search_questions": SearchQuestionsTool,
+        "generate_review": GenerateReviewTool,
+        "analyze_status": AnalyzeStatusTool,
+    }
+    tool_name = plan.get("tool", "none")
+    if tool_name in tool_map:
+        tool = tool_map[tool_name]()
+        return await tool.execute(user_id, **plan.get("params", {}))
+    return {"direct_response": plan.get("response", "")}
+
+
+async def _reflector(query: str, tool_result: dict) -> str:
+    direct = tool_result.get("direct_response", "")
+    if direct:
+        return direct
+    from app.config import settings
+    api_key = settings.fallback_anthropic_api_key or settings.fallback_openai_api_key
+    if not api_key:
+        return f"工具执行结果：{tool_result}"
+    try:
+        import litellm
+        model = (
+            "anthropic/claude-haiku-4-5-20251001"
+            if settings.fallback_anthropic_api_key
+            else "openai/gpt-4o-mini"
+        )
+        resp = await litellm.acompletion(
+            model=model,
+            messages=[
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "user", "content": f"用户问题：{query}\n\n工具返回：{json.dumps(tool_result, ensure_ascii=False)}"},
+            ],
+            max_tokens=800,
+        )
+        return resp.choices[0].message.content.strip()
+    except Exception as exc:
+        logger.warning("interview reflector failed", error=str(exc))
+        return f"处理完成。结果：{tool_result}"
+
+
+async def _memory_writer(user_id: str, query: str, response: str) -> None:
+    mgr = MemoryManager(user_id)
+    await mgr.procedural.write({
+        "agent": "interview_agent",
+        "query": query[:200],
+        "response_summary": response[:200],
+    })
+
+
+async def interview_agent(state: AgentState) -> Command[str]:
+    """面试复盘专家 — retriever→planner→executor→reflector→memory_writer。"""
+    try:
+        query, retrieved = await _retriever(state)
+        plan = await _planner(query, retrieved)
+        tool_result = await _executor(plan, state["user_id"])
+        final_response = await _reflector(query, tool_result)
+        await _memory_writer(state["user_id"], query, final_response)
+    except Exception as exc:
+        logger.error("interview_agent pipeline error", error=str(exc))
+        final_response = f"抱歉，处理您的面试请求时出现错误：{exc}"
+
     return Command(
         goto="supervisor",
-        update={"messages": [SystemMessage(content="Interview Agent 已经处理完毕。")], "current_agent": None},
+        update={"messages": [AIMessage(content=final_response)], "current_agent": None},
     )

@@ -2,7 +2,6 @@
 name = "lumipath-backend"
 version = "0.1.0"
 description = "LumiPath AI-driven personal growth OS — Backend"
-readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     # Web framework
@@ -11,12 +10,13 @@ dependencies = [
     "python-multipart>=0.0.9",
 
     # Pydantic & Settings
-    "pydantic>=2.7.0",
+    "pydantic[email]>=2.7.0",
     "pydantic-settings>=2.3.0",
 
-    # Database (async)
+    # Database (async + sync)
     "sqlalchemy[asyncio]>=2.0.30",
     "asyncpg>=0.29.0",
+    "psycopg2-binary>=2.9.9",
     "alembic>=1.13.0",
     "pgvector>=0.3.0",
 
@@ -71,6 +71,9 @@ dev = [
 
 [project.scripts]
 lumipath = "app.cli.main:cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
 
 [build-system]
 requires = ["hatchling"]

@@ -69,12 +69,12 @@ class MemoryEpisode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class MemoryProcedure(UUIDPrimaryKeyMixin, TimestampMixin, Base):
-    """程序记忆——Skill 执行日志。"""
+    """程序记忆——Tool 执行日志。"""
     __tablename__ = "memory_procedures"
 
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
-    skill_name: Mapped[str] = mapped_column(String(64), nullable=False)
-    skill_version: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    tool_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    tool_version: Mapped[str | None] = mapped_column(String(16), nullable=True)
     input: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     output: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     success: Mapped[bool] = mapped_column(Boolean, nullable=False)
@@ -89,9 +89,9 @@ class MemoryProcedure(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     executed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
-class SkillsRegistry(UUIDPrimaryKeyMixin, TimestampMixin, Base):
-    """Skill 元数据注册表。"""
-    __tablename__ = "skills_registry"
+class ToolsRegistry(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Tool 元数据注册表。"""
+    __tablename__ = "tools_registry"
 
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     version: Mapped[str] = mapped_column(String(16), nullable=False)

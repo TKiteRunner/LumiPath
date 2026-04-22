@@ -1,5 +1,5 @@
 """agent_sessions, agent_messages, memory_long_term, memory_long_term_history,
-memory_summaries, memory_episodes, memory_procedures, skills_registry
+memory_summaries, memory_episodes, memory_procedures, tools_registry
 
 Revision ID: 007
 Revises: 006
@@ -108,8 +108,8 @@ def upgrade() -> None:
         "memory_procedures",
         sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
         sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("skill_name", sa.String(64), nullable=False),
-        sa.Column("skill_version", sa.String(16), nullable=True),
+        sa.Column("tool_name", sa.String(64), nullable=False),
+        sa.Column("tool_version", sa.String(16), nullable=True),
         sa.Column("input", postgresql.JSONB(), nullable=True),
         sa.Column("output", postgresql.JSONB(), nullable=True),
         sa.Column("success", sa.Boolean(), nullable=False),
@@ -123,10 +123,10 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
     )
-    op.create_index("ix_memory_procedures_user_skill", "memory_procedures", ["user_id", "skill_name"])
+    op.create_index("ix_memory_procedures_user_tool", "memory_procedures", ["user_id", "tool_name"])
 
     op.create_table(
-        "skills_registry",
+        "tools_registry",
         sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
         sa.Column("name", sa.String(64), nullable=False),
         sa.Column("version", sa.String(16), nullable=False),
@@ -140,11 +140,11 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
     )
-    op.create_unique_constraint("uq_skills_registry_name_version", "skills_registry", ["name", "version"])
+    op.create_unique_constraint("uq_tools_registry_name_version", "tools_registry", ["name", "version"])
 
 
 def downgrade() -> None:
-    op.drop_table("skills_registry")
+    op.drop_table("tools_registry")
     op.drop_table("memory_procedures")
     op.drop_table("memory_episodes")
     op.drop_table("memory_summaries")

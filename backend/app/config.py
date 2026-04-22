@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     database_url: str = (
         "postgresql+asyncpg://lumipath:lumipath_dev_password@localhost:5432/lumipath"
     )
+    # 同步 URL 供 Celery worker 使用（psycopg2）
+    database_url_sync: str = (
+        "postgresql+psycopg2://lumipath:lumipath_dev_password@localhost:5432/lumipath"
+    )
 
     # ── Redis ────────────────────────────────────────────────
     redis_url: str = "redis://localhost:6379/0"
