@@ -2,49 +2,71 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
-
-
-class CompanyRead(BaseModel):
-    id: uuid.UUID
-    name: str
-    slug: str
-    tier: str | None
-    model_config = {"from_attributes": True}
+from pydantic import BaseModel, model_validator
 
 
 class InterviewCreate(BaseModel):
-    company_id: uuid.UUID
-    role: str
-    round: int
-    scheduled_at: datetime | None = None
-    format: str | None = None
+    company_name: str
+    position: str
+    round: int = 1
+    status: str = "applied"
+    interview_date: datetime | None = None
     notes: str | None = None
 
 
 class InterviewRead(BaseModel):
     id: uuid.UUID
-    company_id: uuid.UUID
-    role: str
+    company_name: str = ""
+    position: str = ""
     round: int
     status: str
-    scheduled_at: datetime | None
+    interview_date: datetime | None = None
+    notes: str | None = None
     created_at: datetime
+    updated_at: datetime
+
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _flatten(cls, data):
+        if hasattr(data, "__dict__"):
+            d = {
+                "id": data.id,
+                "position": getattr(data, "role", ""),
+                "round": data.round,
+                "status": data.status,
+                "interview_date": getattr(data, "scheduled_at", None),
+                "notes": getattr(data, "notes", None),
+                "created_at": data.created_at,
+                "updated_at": data.updated_at,
+                "company_name": "",
+            }
+            if hasattr(data, "company") and data.company:
+                d["company_name"] = data.company.name
+            return d
+        return data
 
 
 class InterviewUpdate(BaseModel):
     status: str | None = None
-    duration_min: int | None = None
     notes: str | None = None
+    interview_date: datetime | None = None
 
 
 class QuestionCreate(BaseModel):
     question_text: str
     my_answer: str | None = None
     difficulty: int | None = None
-    category: str | None = None
+    category: str | None = None  # used as stage key: written_test / first_interview / etc.
     tags: list[str] = []
+
+
+class QuestionUpdate(BaseModel):
+    question_text: str | None = None
+    my_answer: str | None = None
+    difficulty: int | None = None
+    score: int | None = None
 
 
 class QuestionRead(BaseModel):

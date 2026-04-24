@@ -46,22 +46,17 @@ def _keyword_fallback(text: str) -> str:
     return "general"
 
 
-async def _classify_intent(last_msg: str) -> str:
+async def _classify_intent(last_msg: str, user_id: str) -> str:
     """LiteLLM 分类，失败时降级关键词。"""
-    from app.config import settings
-    api_key = settings.fallback_anthropic_api_key or settings.fallback_openai_api_key
-    if not api_key:
+    from app.agents.utils.llm_client import get_llm_config
+    cfg = await get_llm_config(user_id)
+    if not cfg:
         return _keyword_fallback(last_msg)
 
     try:
         import litellm
-        model = (
-            "anthropic/claude-haiku-4-5-20251001"
-            if settings.fallback_anthropic_api_key
-            else "openai/gpt-4o-mini"
-        )
         resp = await litellm.acompletion(
-            model=model,
+            **cfg.litellm_kwargs(),
             messages=[
                 {"role": "system", "content": _INTENT_SYSTEM_PROMPT},
                 {"role": "user", "content": last_msg[:2000]},
@@ -81,7 +76,7 @@ async def supervisor_agent(state: AgentState) -> Command[str]:
     意图分类 → 路由到对应 Specialized Agent 或 END。
     """
     last_msg = state["messages"][-1].content if state["messages"] else ""
-    intent = await _classify_intent(last_msg)
+    intent = await _classify_intent(last_msg, state.get("user_id", ""))
     target = _INTENT_TO_AGENT.get(intent)
 
     logger.info("supervisor routing", intent=intent, target=target or "__end__", user_id=state.get("user_id"))

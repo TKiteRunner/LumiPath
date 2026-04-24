@@ -12,10 +12,19 @@ class GoogleCallbackRequest(BaseModel):
     redirect_uri: str | None = None
 
 
+class UserInToken(BaseModel):
+    id: str
+    email: str
+    display_name: str
+    avatar_url: str | None = None
+    roles: list[str]
+
+
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    user: UserInToken
 
 
 class RefreshRequest(BaseModel):

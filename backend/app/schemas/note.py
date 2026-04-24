@@ -30,6 +30,10 @@ class NoteCreate(BaseModel):
     content: str
 
 
+class NoteWithContent(NoteRead):
+    content: str
+
+
 class NoteListItem(BaseModel):
     id: uuid.UUID
     path: str

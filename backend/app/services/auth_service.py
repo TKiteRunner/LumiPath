@@ -24,6 +24,16 @@ logger = structlog.get_logger(__name__)
 _REFRESH_TTL = settings.jwt_refresh_expire_days * 86400
 
 
+def _user_dict(user, roles: list[str]) -> dict:
+    return {
+        "id": str(user.id),
+        "email": user.email or "",
+        "display_name": user.display_name,
+        "avatar_url": user.avatar_url,
+        "roles": roles,
+    }
+
+
 class AuthService:
 
     # ── 邮箱密码登录 ──────────────────────────────────────────────────────────
@@ -47,7 +57,12 @@ class AuthService:
         await store_refresh_token(jti, str(user.id), _REFRESH_TTL)
 
         logger.info("user logged in", user_id=str(user.id))
-        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "user": _user_dict(user, roles),
+        }
 
     # ── 注册 ──────────────────────────────────────────────────────────────────
 
@@ -68,20 +83,25 @@ class AuthService:
         db.add(user)
         await db.flush()
 
-        free_role = (await db.execute(select(Role).where(Role.name == "free_user"))).scalar_one_or_none()
-        if free_role:
-            db.add(UserRole(user_id=user.id, role_id=free_role.id, granted_at=datetime.now(timezone.utc)))
+        default_role = (await db.execute(select(Role).where(Role.name == "user"))).scalar_one_or_none()
+        if default_role:
+            db.add(UserRole(user_id=user.id, role_id=default_role.id, granted_at=datetime.now(timezone.utc)))
 
         await db.commit()
         await db.refresh(user)
 
-        roles = ["free_user"]
+        roles = ["user"]
         access_token = create_access_token(str(user.id), roles)
         refresh_token, jti = create_refresh_token(str(user.id))
         await store_refresh_token(jti, str(user.id), _REFRESH_TTL)
 
         logger.info("user registered", user_id=str(user.id))
-        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "user": _user_dict(user, roles),
+        }
 
     # ── Google OAuth ──────────────────────────────────────────────────────────
 
@@ -90,7 +110,6 @@ class AuthService:
         import httpx
 
         async with httpx.AsyncClient(timeout=10) as client:
-            # 1. code → token
             token_resp = await client.post(
                 "https://oauth2.googleapis.com/token",
                 data={
@@ -105,7 +124,6 @@ class AuthService:
                 raise UnauthorizedError("Google OAuth token exchange failed")
             token_data = token_resp.json()
 
-            # 2. token → userinfo
             userinfo_resp = await client.get(
                 "https://www.googleapis.com/oauth2/v2/userinfo",
                 headers={"Authorization": f"Bearer {token_data['access_token']}"},
@@ -114,7 +132,6 @@ class AuthService:
                 raise UnauthorizedError("Failed to fetch Google userinfo")
             userinfo = userinfo_resp.json()
 
-        # 3. upsert User + OAuthAccount
         user = await self._upsert_oauth_user(
             google_sub=userinfo["id"],
             email=userinfo.get("email", ""),
@@ -123,14 +140,18 @@ class AuthService:
             db=db,
         )
 
-        # 4. 颁发 JWT
         roles = await self._get_role_names(user.id, db)
         access_token = create_access_token(str(user.id), roles)
         refresh_token, jti = create_refresh_token(str(user.id))
         await store_refresh_token(jti, str(user.id), _REFRESH_TTL)
 
         logger.info("google oauth login", user_id=str(user.id), email=user.email)
-        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "user": _user_dict(user, roles),
+        }
 
     # ── Token 刷新 ────────────────────────────────────────────────────────────
 
@@ -148,7 +169,6 @@ class AuthService:
         except (JWTError, KeyError):
             raise UnauthorizedError("Invalid refresh token")
 
-        # 白名单校验：必须是我们签发的 jti
         if not await is_refresh_token_valid(old_jti):
             raise UnauthorizedError("Refresh token revoked or expired")
 
@@ -156,7 +176,6 @@ class AuthService:
         if not user:
             raise UnauthorizedError("User not found")
 
-        # 旧 jti 加入黑名单，颁发新 token
         await blacklist_refresh_token(old_jti, _REFRESH_TTL)
 
         roles = await self._get_role_names(user.id, db)
@@ -165,12 +184,16 @@ class AuthService:
         await store_refresh_token(new_jti, str(user.id), _REFRESH_TTL)
 
         logger.info("token refreshed", user_id=str(user.id))
-        return {"access_token": new_access, "refresh_token": new_refresh, "token_type": "bearer"}
+        return {
+            "access_token": new_access,
+            "refresh_token": new_refresh,
+            "token_type": "bearer",
+            "user": _user_dict(user, roles),
+        }
 
     # ── Logout ────────────────────────────────────────────────────────────────
 
     async def logout(self, refresh_token_str: str) -> None:
-        """将 refresh token jti 加入黑名单，立即失效。"""
         from jose import JWTError
         try:
             payload = decode_token(refresh_token_str)
@@ -179,7 +202,6 @@ class AuthService:
                 await blacklist_refresh_token(jti, _REFRESH_TTL)
                 logger.info("user logged out", jti=jti)
         except JWTError:
-            # token 已过期或格式错误，无需处理
             pass
 
     # ── helpers ──────────────────────────────────────────────────────────────
@@ -196,12 +218,11 @@ class AuthService:
         from sqlalchemy import select
         from app.models.user import User, Role, UserRole, OAuthAccount
 
-        # 先按 google_sub 找 OAuthAccount
         oauth_row = (
             await db.execute(
                 select(OAuthAccount).where(
                     OAuthAccount.provider == "google",
-                    OAuthAccount.provider_user_id == google_sub,
+                    OAuthAccount.provider_sub == google_sub,
                 )
             )
         ).scalar_one_or_none()
@@ -209,7 +230,6 @@ class AuthService:
         if oauth_row:
             user = (await db.execute(select(User).where(User.id == oauth_row.user_id))).scalar_one()
         else:
-            # 按 email 找已有用户（邮箱密码注册过）
             user = (
                 await db.execute(select(User).where(User.email == email, User.deleted_at.is_(None)))
             ).scalar_one_or_none()
@@ -224,16 +244,14 @@ class AuthService:
                 db.add(user)
                 await db.flush()
 
-                free_role = (await db.execute(select(Role).where(Role.name == "free_user"))).scalar_one_or_none()
-                if free_role:
-                    db.add(UserRole(user_id=user.id, role_id=free_role.id, granted_at=datetime.now(timezone.utc)))
+                default_role = (await db.execute(select(Role).where(Role.name == "user"))).scalar_one_or_none()
+                if default_role:
+                    db.add(UserRole(user_id=user.id, role_id=default_role.id, granted_at=datetime.now(timezone.utc)))
 
-            # 绑定 OAuthAccount
             db.add(OAuthAccount(
                 user_id=user.id,
                 provider="google",
-                provider_user_id=google_sub,
-                email=email,
+                provider_sub=google_sub,
             ))
 
         await db.commit()

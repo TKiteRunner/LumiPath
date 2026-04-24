@@ -55,12 +55,27 @@ class Settings(BaseSettings):
     # ── RabbitMQ ─────────────────────────────────────────────
     rabbitmq_url: str = "amqp://guest:guest@localhost:5672//"
 
-    # ── LLM 兜底 Keys ────────────────────────────────────────
+    # ── SiliconFlow（硅基流动）────────────────────────────────
+    siliconflow_api_key: str = ""
+    siliconflow_api_base: str = "https://api.siliconflow.cn/v1"
+
+    # ── Per-Agent LLM 模型选型（SiliconFlow 路由）────────────
+    llm_supervisor: str = "openai/deepseek-ai/DeepSeek-V3"
+    llm_ia: str = "openai/deepseek-ai/DeepSeek-R1"
+    llm_oa: str = "openai/THUDM/GLM-4-9B-Chat"
+    llm_ma: str = "openai/Pro/doubao-pro-32k"
+    llm_embedding: str = "openai/BAAI/bge-m3"
+
+    # ── LLM 兜底 Keys（其他供应商）───────────────────────────
     fallback_anthropic_api_key: str = ""
     fallback_openai_api_key: str = ""
     fallback_deepseek_api_key: str = ""
     fallback_qwen_api_key: str = ""
     fallback_gemini_api_key: str = ""
+    fallback_doubao_api_key: str = ""
+    fallback_kimi_api_key: str = ""
+    fallback_minimax_api_key: str = ""
+    fallback_zhipu_api_key: str = ""
 
     # ── Google OAuth ─────────────────────────────────────────
     google_client_id: str = ""

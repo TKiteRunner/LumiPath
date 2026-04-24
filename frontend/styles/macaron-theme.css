@@ -1,0 +1,90 @@
+:root {
+  /* 马卡龙色板 */
+  --color-macaron-pink:   #F7C5C5;
+  --color-macaron-mint:   #C5EAD5;
+  --color-macaron-lemon:  #F9F0C5;
+  --color-macaron-lilac:  #D5C5EA;
+  --color-macaron-sky:    #C5DCF7;
+  --color-macaron-peach:  #F7DEC5;
+
+  /* 语义 Token */
+  --color-primary:        #F7C5C5;
+  --color-secondary:      #C5EAD5;
+  --color-accent:         #D5C5EA;
+  --color-surface:        #FFFAF8;
+  --color-text:           #3D2B2B;
+  --color-text-muted:     #9B8080;
+  --color-border:         #EDD8D8;
+
+  /* 深色变体（hover 状态） */
+  --color-primary-dark:   #F0A8A8;
+  --color-secondary-dark: #A8D9BC;
+  --color-accent-dark:    #BCA8D9;
+
+  /* 圆角 */
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+
+  /* 字体 */
+  --font-sans: 'Inter', 'Noto Sans SC', system-ui, sans-serif;
+
+  /* 阴影 */
+  --shadow-card: 0 2px 12px rgba(247, 197, 197, 0.25);
+  --shadow-card-hover: 0 6px 24px rgba(247, 197, 197, 0.40);
+  --shadow-sidebar: 2px 0 12px rgba(237, 216, 216, 0.30);
+}
+
+/* 全局基础样式 */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* 选中文字颜色 */
+::selection {
+  background: var(--color-macaron-lilac);
+  color: var(--color-text);
+}
+
+/* 马卡龙卡片基础样式 */
+.macaron-card {
+  background: white;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.macaron-card:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-1px);
+}
+
+/* 状态徽章色 */
+.badge-applied  { background: var(--color-macaron-sky);   color: #2B4A6F; }
+.badge-technical { background: var(--color-macaron-lemon); color: #5A4A00; }
+.badge-offer    { background: var(--color-macaron-mint);  color: #1A5C36; }
+.badge-rejected { background: #F5D5D5;                    color: #8B2020; }
+.badge-pending  { background: var(--color-macaron-peach); color: #6F3A0A; }

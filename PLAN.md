@@ -3,14 +3,14 @@
 > AI 驱动的面试追踪 + OKR 个人规划 + **每日学习笔记（Obsidian 兼容 + Git 版本化）** 系统
 > 本文档为 **Step 1–4 统一开发蓝图**。v3 为决策锁定版。
 
-## 📊 总体进度（2026-04-21）
+## 📊 总体进度（2026-04-22）
 
 | 阶段 | 状态 | 说明 |
 |------|------|------|
 | **Step 1** — 文档设计 | ✅ 已完成 | architecture / memory-system / notes-vault-spec / database-schema |
 | **Step 2** — 后端骨架 | ✅ 已完成 | 78 文件全部就位；核心逻辑已补全（见第 8 节详细对照表） |
 | **Step 3** — 异步 & 中间件 | ✅ 已完成 | Redis/PG/Neo4j 真实 IO；9个Tool；WebSocket；Google OAuth；MCP Server |
-| **Step 4** — 前端 + MCP | 🔜 待排期 | Next.js 页面；Milkdown 编辑器；MCP 工具暴露 |
+| **Step 4** — 前端 + MCP | ✅ 已完成 | Next.js 页面；Milkdown 编辑器；MCP 工具暴露 |
 
 ---
 

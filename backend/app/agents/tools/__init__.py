@@ -12,5 +12,8 @@ from app.agents.tools import suggest_tasks  # noqa: F401
 from app.agents.tools import generate_report  # noqa: F401
 from app.agents.tools import search_notes  # noqa: F401
 from app.agents.tools import create_summary  # noqa: F401
+from app.agents.tools import list_notes  # noqa: F401
+from app.agents.tools import get_note_by_date  # noqa: F401
+from app.agents.tools import list_interviews  # noqa: F401
 
 __all__ = ["BaseTool", "register_tool", "TOOL_REGISTRY"]

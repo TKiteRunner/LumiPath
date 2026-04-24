@@ -43,21 +43,16 @@ async def _retriever(state: AgentState) -> tuple[str, dict]:
     return query, retrieved
 
 
-async def _planner(query: str, retrieved: dict) -> dict:
-    from app.config import settings
-    api_key = settings.fallback_anthropic_api_key or settings.fallback_openai_api_key
-    if not api_key:
+async def _planner(query: str, retrieved: dict, user_id: str) -> dict:
+    from app.agents.utils.llm_client import get_llm_config
+    cfg = await get_llm_config(user_id, "notes")
+    if not cfg:
         return {"tool": "none", "response": "（请先在设置页配置 LLM API Key）"}
     try:
         import litellm
-        model = (
-            "anthropic/claude-haiku-4-5-20251001"
-            if settings.fallback_anthropic_api_key
-            else "openai/gpt-4o-mini"
-        )
         context_str = str(retrieved.get("fused_context", {}))[:800]
         resp = await litellm.acompletion(
-            model=model,
+            **cfg.litellm_kwargs(),
             messages=[{"role": "user", "content": _PLANNER_PROMPT.format(query=query, context=context_str)}],
             max_tokens=300,
             temperature=0.1,
@@ -84,25 +79,21 @@ async def _executor(plan: dict, user_id: str) -> dict:
     return {"direct_response": plan.get("response", "")}
 
 
-async def _reflector(query: str, tool_result: dict) -> str:
+async def _reflector(query: str, tool_result: dict, user_id: str) -> str:
     direct = tool_result.get("direct_response", "")
     if direct:
         return direct
-    from app.config import settings
-    api_key = settings.fallback_anthropic_api_key or settings.fallback_openai_api_key
-    if not api_key:
+    from app.agents.utils.llm_client import get_llm_config, get_system_prompt
+    cfg = await get_llm_config(user_id, "notes")
+    if not cfg:
         return f"工具执行结果：{tool_result}"
+    system_prompt = await get_system_prompt(user_id, "notes")
     try:
         import litellm
-        model = (
-            "anthropic/claude-haiku-4-5-20251001"
-            if settings.fallback_anthropic_api_key
-            else "openai/gpt-4o-mini"
-        )
         resp = await litellm.acompletion(
-            model=model,
+            **cfg.litellm_kwargs(),
             messages=[
-                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"用户问题：{query}\n\n工具返回：{json.dumps(tool_result, ensure_ascii=False)}"},
             ],
             max_tokens=800,
@@ -126,9 +117,9 @@ async def notes_agent(state: AgentState) -> Command[str]:
     """学习笔记助手 — retriever→planner→executor→reflector→memory_writer。"""
     try:
         query, retrieved = await _retriever(state)
-        plan = await _planner(query, retrieved)
+        plan = await _planner(query, retrieved, state["user_id"])
         tool_result = await _executor(plan, state["user_id"])
-        final_response = await _reflector(query, tool_result)
+        final_response = await _reflector(query, tool_result, state["user_id"])
         await _memory_writer(state["user_id"], query, final_response)
     except Exception as exc:
         logger.error("notes_agent pipeline error", error=str(exc))

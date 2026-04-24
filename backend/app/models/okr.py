@@ -19,7 +19,7 @@ class OKRObjective(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Version
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    quarter: Mapped[str] = mapped_column(String(8), nullable=False)   # 2026-Q2
+    quarter: Mapped[str] = mapped_column(String(64), nullable=False)
     priority: Mapped[int] = mapped_column(SmallInteger, default=1)
     status: Mapped[str] = mapped_column(String(16), default="active")
     # active / paused / completed / abandoned

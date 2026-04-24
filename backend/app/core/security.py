@@ -5,21 +5,19 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 import uuid
 
+import bcrypt as _bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from app.config import settings
 
-# ── bcrypt ────────────────────────────────────────────────────────────────────
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
+# ── bcrypt (direct, passlib-free for bcrypt 4.x+ compatibility) ──────────────
 
 def hash_password(plain: str) -> str:
-    return _pwd_context.hash(plain)
+    return _bcrypt.hashpw(plain.encode(), _bcrypt.gensalt()).decode()
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return _pwd_context.verify(plain, hashed)
+    return _bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
 # ── JWT ───────────────────────────────────────────────────────────────────────

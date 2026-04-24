@@ -2,12 +2,14 @@
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import CurrentUser, require_permission
 from app.db.session import get_async_session
-from app.schemas.note import DailyNoteUpsert, NoteListItem, NoteRead
+from app.models.note import Note
+from app.schemas.note import DailyNoteUpsert, NoteListItem, NoteRead, NoteWithContent
 from app.services import notes_service
 from app.workers.embedding_worker import process_note_embedding
 from app.workers.vault_watcher import sync_vault
@@ -24,6 +26,42 @@ async def list_notes(
 ):
     """列出用户笔记（按类型/标签过滤）。"""
     return await notes_service.list_notes(current_user.id, db, type=type, tag=tag)
+
+
+@router.get("/daily/{note_date}", response_model=NoteWithContent)
+async def get_daily_note(
+    note_date: date,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_async_session),
+):
+    """获取指定日期的 daily note（含完整 Markdown 内容）。"""
+    result = await db.execute(
+        select(Note).where(
+            Note.user_id == current_user.id,
+            Note.note_date == note_date,
+            Note.type == "daily",
+            Note.deleted_at.is_(None),
+        )
+    )
+    note = result.scalar_one_or_none()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    file_path = notes_service.get_vault_path(str(current_user.id)) / note.path
+    content = notes_service.read_note_file(file_path)
+    return NoteWithContent(
+        id=note.id,
+        path=note.path,
+        type=note.type,
+        title=note.title,
+        note_date=note.note_date,
+        content_preview=note.content_preview,
+        word_count=note.word_count,
+        is_private=note.is_private,
+        created_at=note.created_at,
+        updated_at=note.updated_at,
+        content=content,
+    )
 
 
 @router.get("/{note_id}", response_model=NoteRead)
@@ -47,18 +85,13 @@ async def upsert_daily_note(
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_async_session),
 ):
-    """
-    保存每日笔记（幂等 upsert）。
-    流程：写 vault .md → upsert DB → 异步触发 embedding + vault_sync。
-    """
+    """保存每日笔记（幂等 upsert）。"""
     note = await notes_service.upsert_daily_note(current_user.id, note_date, body.content, db)
 
-    # 异步触发 embedding（非阻塞，Step 3 接入真实向量模型）
     process_note_embedding.apply_async(
         args=[str(note.id), body.content],
         queue="embedding",
     )
-    # 异步触发 Git 提交
     sync_vault.apply_async(
         args=[str(current_user.id), f"update daily note {note_date}"],
         queue="vault_sync",

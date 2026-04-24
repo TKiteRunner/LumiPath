@@ -2,7 +2,34 @@
   "permissions": {
     "allow": [
       "Bash(docker info *)",
-      "Bash(curl -v --proxy http://127.0.0.1:7890 https://registry-1.docker.io/v2/)"
+      "Bash(curl -v --proxy http://127.0.0.1:7890 https://registry-1.docker.io/v2/)",
+      "Bash(docker exec *)",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"peterwei1054@163.com\",\"password\":\"test123\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"test@lumipath.dev\",\"password\":\"testpass123\"}')",
+      "Read(//tmp/**)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('access_token',''\\)\\)\")",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"test@lumipath.dev\",\"password\":\"testpass123\"}' python -c \"import json; d=json.load\\(open\\('/tmp/login.json'\\)\\); open\\('/tmp/token.txt','w'\\).write\\(d.get\\('access_token',''\\)\\)\" cat /tmp/token.txt)",
+      "Bash(python -c ' *)",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/okr/objectives -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1OGJjNTViNS05ZGQ2LTRkOTUtYTRmMS1mYTBjY2RiOGViZGQiLCJ0eXBlIjoiYWNjZXNzIiwicm9sZXMiOlsidXNlciJdLCJpYXQiOjE3NzY4NTA4ODcsImV4cCI6MTc3Njg1MTc4NywianRpIjoiMGQ0MjBlYWMtN2I1MC00ZjFlLWE3MTQtMzM4NGE5Zjg2OTU3In0.QpKanZdeQeBRtHdaisye_jz3vRCPoTFae08trK34gWA' -H 'Content-Type: application/json' -d '{\"title\":\"成为全栈工程师\",\"quarter\":\"2026-Q2\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/interviews -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1OGJjNTViNS05ZGQ2LTRkOTUtYTRmMS1mYTBjY2RiOGViZGQiLCJ0eXBlIjoiYWNjZXNzIiwicm9sZXMiOlsidXNlciJdLCJpYXQiOjE3NzY4NTA4ODcsImV4cCI6MTc3Njg1MTc4NywianRpIjoiMGQ0MjBlYWMtN2I1MC00ZjFlLWE3MTQtMzM4NGE5Zjg2OTU3In0.QpKanZdeQeBRtHdaisye_jz3vRCPoTFae08trK34gWA' -H 'Content-Type: application/json' -d '{\"company_name\":\"字节跳动\",\"position\":\"前端工程师\",\"round\":1,\"status\":\"applied\"}')",
+      "Bash(curl -s http://localhost:8000/api/v1/okr/objectives -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1OGJjNTViNS05ZGQ2LTRkOTUtYTRmMS1mYTBjY2RiOGViZGQiLCJ0eXBlIjoiYWNjZXNzIiwicm9sZXMiOlsidXNlciJdLCJpYXQiOjE3NzY4NTA4ODcsImV4cCI6MTc3Njg1MTc4NywianRpIjoiMGQ0MjBlYWMtN2I1MC00ZjFlLWE3MTQtMzM4NGE5Zjg2OTU3In0.QpKanZdeQeBRtHdaisye_jz3vRCPoTFae08trK34gWA')",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/okr/objectives -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1OGJjNTViNS05ZGQ2LTRkOTUtYTRmMS1mYTBjY2RiOGViZGQiLCJ0eXBlIjoiYWNjZXNzIiwicm9sZXMiOlsidXNlciJdLCJpYXQiOjE3NzY4NTA4ODcsImV4cCI6MTc3Njg1MTc4NywianRpIjoiMGQ0MjBlYWMtN2I1MC00ZjFlLWE3MTQtMzM4NGE5Zjg2OTU3In0.QpKanZdeQeBRtHdaisye_jz3vRCPoTFae08trK34gWA\" -H \"Content-Type: application/json\" -d '{\"title\":\"test\",\"quarter\":\"2026-Q2\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/okr/objectives -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1OGJjNTViNS05ZGQ2LTRkOTUtYTRmMS1mYTBjY2RiOGViZGQiLCJ0eXBlIjoiYWNjZXNzIiwicm9sZXMiOlsidXNlciJdLCJpYXQiOjE3NzY4NTA4ODcsImV4cCI6MTc3Njg1MTc4NywianRpIjoiMGQ0MjBlYWMtN2I1MC00ZjFlLWE3MTQtMzM4NGE5Zjg2OTU3In0.QpKanZdeQeBRtHdaisye_jz3vRCPoTFae08trK34gWA\" -H \"Content-Type: application/json\" -d '{\"title\":\"test goal\",\"quarter\":\"2026-Q2\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/interviews -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1OGJjNTViNS05ZGQ2LTRkOTUtYTRmMS1mYTBjY2RiOGViZGQiLCJ0eXBlIjoiYWNjZXNzIiwicm9sZXMiOlsidXNlciJdLCJpYXQiOjE3NzY4NTA4ODcsImV4cCI6MTc3Njg1MTc4NywianRpIjoiMGQ0MjBlYWMtN2I1MC00ZjFlLWE3MTQtMzM4NGE5Zjg2OTU3In0.QpKanZdeQeBRtHdaisye_jz3vRCPoTFae08trK34gWA\" -H \"Content-Type: application/json\" -d '{\"company_name\":\"字节跳动\",\"position\":\"前端工程师\",\"round\":1,\"status\":\"applied\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/interviews -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1OGJjNTViNS05ZGQ2LTRkOTUtYTRmMS1mYTBjY2RiOGViZGQiLCJ0eXBlIjoiYWNjZXNzIiwicm9sZXMiOlsidXNlciJdLCJpYXQiOjE3NzY4NTA4ODcsImV4cCI6MTc3Njg1MTc4NywianRpIjoiMGQ0MjBlYWMtN2I1MC00ZjFlLWE3MTQtMzM4NGE5Zjg2OTU3In0.QpKanZdeQeBRtHdaisye_jz3vRCPoTFae08trK34gWA\" -H \"Content-Type: application/json\" -d \"{\\\\\"company_name\\\\\":\\\\\"Bytedance\\\\\",\\\\\"position\\\\\":\\\\\"Frontend\\\\\",\\\\\"round\\\\\":1,\\\\\"status\\\\\":\\\\\"applied\\\\\"}\")",
+      "Bash(curl -s http://localhost:8000/api/v1/interviews -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1OGJjNTViNS05ZGQ2LTRkOTUtYTRmMS1mYTBjY2RiOGViZGQiLCJ0eXBlIjoiYWNjZXNzIiwicm9sZXMiOlsidXNlciJdLCJpYXQiOjE3NzY4NTA4ODcsImV4cCI6MTc3Njg1MTc4NywianRpIjoiMGQ0MjBlYWMtN2I1MC00ZjFlLWE3MTQtMzM4NGE5Zjg2OTU3In0.QpKanZdeQeBRtHdaisye_jz3vRCPoTFae08trK34gWA\")",
+      "Bash(curl -s http://localhost:8000/api/v1/users/me/settings/llm -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1OGJjNTViNS05ZGQ2LTRkOTUtYTRmMS1mYTBjY2RiOGViZGQiLCJ0eXBlIjoiYWNjZXNzIiwicm9sZXMiOlsidXNlciJdLCJpYXQiOjE3NzY4NTA4ODcsImV4cCI6MTc3Njg1MTc4NywianRpIjoiMGQ0MjBlYWMtN2I1MC00ZjFlLWE3MTQtMzM4NGE5Zjg2OTU3In0.QpKanZdeQeBRtHdaisye_jz3vRCPoTFae08trK34gWA\")",
+      "Bash(.venv/Scripts/python.exe -c ' *)",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"peterwei1054@gmail.com\\\\\",\\\\\"password\\\\\":\\\\\"test123\\\\\"}\")",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"test@lumipath.dev\\\\\",\\\\\"password\\\\\":\\\\\"test123\\\\\"}\")",
+      "Bash(npx tsc *)",
+      "Bash(docker compose *)",
+      "PowerShell(netstat -ano)",
+      "PowerShell(netsh interface ipv4 show excludedportrange protocol=tcp)",
+      "PowerShell(whoami; \\([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent\\(\\)\\).IsInRole\\([Security.Principal.WindowsBuiltInRole]::Administrator\\))",
+      "Bash(grep -E \"\\\\.\\(ts|tsx|js\\)$\")",
+      "Bash(xargs cat *)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")"
     ]
   }
 }
